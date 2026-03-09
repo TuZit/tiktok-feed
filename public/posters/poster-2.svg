@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="g2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="100%" stop-color="#1e90ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#g2)"/>
+  <text x="540" y="940" font-size="128" fill="#ffffff" text-anchor="middle" font-family="sans-serif">VIBE 02</text>
+</svg>
