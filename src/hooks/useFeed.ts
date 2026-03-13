@@ -11,6 +11,23 @@ import type { InteractionType } from '../types/feed'
 
 const PAGE_SIZE = 8
 const WINDOW_OVERSCAN = 2
+const FALLBACK_FEED_ERROR = 'Cannot load feed right now.'
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function getErrorMessage(error: unknown): string {
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error
+  }
+
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+
+  return FALLBACK_FEED_ERROR
+}
 
 function getWindowRange(activeIndex: number, total: number): {
   start: number
@@ -36,6 +53,8 @@ export function useFeed() {
     new Map(),
   )
   const playbackController = useMemo(() => new PlaybackController(), [])
+  const requestAbortRef = useRef<AbortController | null>(null)
+  const requestIdRef = useRef(0)
 
   const loadNextPage = useCallback(async () => {
     if (state.loading || !state.hasMore) {
@@ -51,14 +70,37 @@ export function useFeed() {
       return
     }
 
+    requestAbortRef.current?.abort()
+    const abortController = new AbortController()
+    requestAbortRef.current = abortController
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+
     dispatch({ type: 'loadStart' })
 
     try {
-      const payload = await getFeed({ cursor: state.cursor, limit: PAGE_SIZE })
+      const payload = await getFeed({
+        cursor: state.cursor,
+        limit: PAGE_SIZE,
+        signal: abortController.signal,
+      })
+
+      if (requestId !== requestIdRef.current || abortController.signal.aborted) {
+        return
+      }
+
       pageCacheRef.current.set(cacheKey, payload)
       dispatch({ type: 'loadSuccess', payload })
-    } catch {
-      dispatch({ type: 'loadError', payload: 'Cannot load feed right now.' })
+    } catch (error) {
+      if (requestId !== requestIdRef.current || isAbortError(error)) {
+        return
+      }
+
+      dispatch({ type: 'loadError', payload: getErrorMessage(error) })
+    } finally {
+      if (requestAbortRef.current === abortController) {
+        requestAbortRef.current = null
+      }
     }
   }, [state.cursor, state.hasMore, state.loading])
 
@@ -67,6 +109,12 @@ export function useFeed() {
       void loadNextPage()
     }
   }, [loadNextPage, state.items.length, state.loading])
+
+  useEffect(() => {
+    return () => {
+      requestAbortRef.current?.abort()
+    }
+  }, [])
 
   const activeIndex = useMemo(() => {
     if (!state.activeId) {
@@ -135,9 +183,11 @@ export function useFeed() {
         payload: { itemId, actionType },
       })
 
-      runWhenIdle(() => {
-        console.log(`[analytics] ${actionType} ${itemId}`)
-      })
+      if (import.meta.env.DEV) {
+        runWhenIdle(() => {
+          console.log(`[analytics] ${actionType} ${itemId}`)
+        })
+      }
 
       try {
         await postInteraction({ itemId, actionType })

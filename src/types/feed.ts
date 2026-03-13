@@ -24,6 +24,7 @@ export interface FeedResponse {
 export interface FeedQuery {
   cursor?: string | null
   limit?: number
+  signal?: AbortSignal
 }
 
 export type InteractionType = 'like' | 'save' | 'share' | 'comment'

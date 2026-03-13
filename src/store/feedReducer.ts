@@ -209,14 +209,12 @@ export function feedReducer(state: FeedState, action: FeedAction): FeedState {
   }
 }
 
+const compactNumberFormatter = new Intl.NumberFormat(undefined, {
+  notation: 'compact',
+  compactDisplay: 'short',
+  maximumFractionDigits: 1,
+})
+
 export function formatCompact(value: number): string {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`
-  }
-
-  if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}K`
-  }
-
-  return String(value)
+  return compactNumberFormatter.format(value)
 }

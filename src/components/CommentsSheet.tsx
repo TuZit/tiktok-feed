@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef } from 'react'
 import type { FeedItem } from '../types/feed'
 
 interface CommentsSheetProps {
@@ -15,12 +16,46 @@ const MOCK_COMMENTS = [
 ]
 
 export function CommentsSheet({ open, item, onClose }: CommentsSheetProps) {
+  const titleId = useId()
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    lastFocusedElementRef.current = document.activeElement as HTMLElement | null
+    panelRef.current?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      lastFocusedElementRef.current?.focus()
+    }
+  }, [onClose, open])
+
   return (
     <div className={`comments-sheet ${open ? 'comments-sheet--open' : ''}`}>
       <div className="comments-sheet__backdrop" onClick={onClose} />
-      <div className="comments-sheet__panel" role="dialog" aria-modal="true">
+      <div
+        ref={panelRef}
+        className="comments-sheet__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <header className="comments-sheet__header">
-          <h2>Comments</h2>
+          <h2 id={titleId}>Comments</h2>
           <button
             type="button"
             className="comments-sheet__close"

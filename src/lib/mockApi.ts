@@ -43,9 +43,28 @@ const POSTERS = [
 const FEED_TOTAL = 72
 const PAGE_DELAY_MS = [90, 130, 180, 220]
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms)
+function createAbortError(): DOMException {
+  return new DOMException('The operation was aborted.', 'AbortError')
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(createAbortError())
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+
+    const onAbort = () => {
+      window.clearTimeout(timeoutId)
+      signal?.removeEventListener('abort', onAbort)
+      reject(createAbortError())
+    }
+
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
 }
 
@@ -79,6 +98,7 @@ const FEED_DB = createSeedFeed(FEED_TOTAL)
 export async function getFeed({
   cursor = null,
   limit = 8,
+  signal,
 }: FeedQuery): Promise<FeedResponse> {
   const safeLimit = Math.max(1, Math.min(limit, 12))
   const offset = cursor ? Number.parseInt(cursor, 10) : 0
@@ -86,7 +106,7 @@ export async function getFeed({
   const end = Math.min(start + safeLimit, FEED_DB.length)
 
   const delay = PAGE_DELAY_MS[start % PAGE_DELAY_MS.length]
-  await sleep(delay)
+  await sleep(delay, signal)
 
   const items = FEED_DB.slice(start, end).map((item) => normalizeFeedItem(item))
   const hasMore = end < FEED_DB.length

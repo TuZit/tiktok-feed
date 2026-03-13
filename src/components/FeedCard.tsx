@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
-import { formatCompact, getViewerState, type FeedState } from '../store/feedReducer'
+import { formatCompact } from '../store/feedReducer'
 import type { FeedItem } from '../types/feed'
 import type { PlaybackController } from '../lib/playbackController'
 
 interface FeedCardProps {
   item: FeedItem
-  state: FeedState
+  liked: boolean
+  saved: boolean
   isActive: boolean
   shouldRenderVideo: boolean
   playbackController: PlaybackController
@@ -17,7 +18,8 @@ interface FeedCardProps {
 
 export function FeedCard({
   item,
-  state,
+  liked,
+  saved,
   isActive,
   shouldRenderVideo,
   playbackController,
@@ -27,7 +29,6 @@ export function FeedCard({
   onComment,
 }: FeedCardProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const viewerState = getViewerState(state, item.id)
 
   useEffect(() => {
     const video = videoRef.current
@@ -70,8 +71,9 @@ export function FeedCard({
       <aside className="feed-card__actions" aria-label="Video actions">
         <button
           type="button"
-          className={`feed-action ${viewerState.liked ? 'feed-action--active' : ''}`}
+          className={`feed-action ${liked ? 'feed-action--active' : ''}`}
           onClick={() => onLike(item.id)}
+          aria-label={liked ? 'Unlike video' : 'Like video'}
         >
           <span className="feed-action__icon">L</span>
           <span>{formatCompact(item.stats.likes)}</span>
@@ -80,14 +82,16 @@ export function FeedCard({
           type="button"
           className="feed-action"
           onClick={() => onComment(item.id)}
+          aria-label="Open comments"
         >
           <span className="feed-action__icon">C</span>
           <span>{formatCompact(item.stats.comments)}</span>
         </button>
         <button
           type="button"
-          className={`feed-action ${viewerState.saved ? 'feed-action--active' : ''}`}
+          className={`feed-action ${saved ? 'feed-action--active' : ''}`}
           onClick={() => onSave(item.id)}
+          aria-label={saved ? 'Unsave video' : 'Save video'}
         >
           <span className="feed-action__icon">S</span>
           <span>{formatCompact(item.stats.saved)}</span>
@@ -96,6 +100,7 @@ export function FeedCard({
           type="button"
           className="feed-action"
           onClick={() => onShare(item.id)}
+          aria-label="Share video"
         >
           <span className="feed-action__icon">Sh</span>
           <span>{formatCompact(item.stats.shares)}</span>
